@@ -30,9 +30,9 @@ impl Config {
         let kaspad = Network::into_iter()
             .map(|network| {
                 let selected_origin = match network {
-                    Network::Mainnet => origin,
-                    Network::Testnet10 => origin,
-                    Network::Testnet12 => covpp_origin,
+                    Network::Mainnet => origin.clone(),
+                    Network::Testnet10 => origin.clone(),
+                    Network::Testnet12 => covpp_origin.clone(),
                 };
                 kaspad::Config::new(selected_origin.clone(), network)
             })
