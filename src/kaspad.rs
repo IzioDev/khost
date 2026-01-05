@@ -81,7 +81,7 @@ impl Config {
         let (grpc, wrpc_borsh, wrpc_json) = match network {
             Network::Mainnet => (16110, 17110, 18110),
             Network::Testnet10 => (16210, 17210, 18210),
-            Network::Testnet11 => (16310, 17310, 18310),
+            Network::Testnet12 => (16311, 17210, 18210),
         };
 
         Self {
@@ -143,9 +143,9 @@ impl From<&Config> for Vec<String> {
                 args.push("--testnet");
                 args.push("--netsuffix=10");
             }
-            Network::Testnet11 => {
+            Network::Testnet12 => {
                 args.push("--testnet");
-                args.push("--netsuffix=11");
+                args.push("--netsuffix=12");
             }
         }
 

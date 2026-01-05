@@ -32,7 +32,7 @@ pub enum Network {
     #[default]
     Mainnet,
     Testnet10,
-    Testnet11,
+    Testnet12,
 }
 
 impl Display for Network {
@@ -40,7 +40,7 @@ impl Display for Network {
         match self {
             Network::Mainnet => write!(f, "mainnet"),
             Network::Testnet10 => write!(f, "testnet-10"),
-            Network::Testnet11 => write!(f, "testnet-11"),
+            Network::Testnet12 => write!(f, "testnet-12"),
         }
     }
 }

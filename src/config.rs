@@ -24,8 +24,18 @@ impl Config {
             .with_local_interface(8989);
 
         let origin = Origin::try_new("https://github.com/aspectron/rusty-kaspa", Some("pnn-v1"))?;
+        let covpp_origin =
+            Origin::try_new("https://github.com/kaspanet/rusty-kaspa", Some("covpp"))?;
+
         let kaspad = Network::into_iter()
-            .map(|network| kaspad::Config::new(origin.clone(), network))
+            .map(|network| {
+                let selected_origin = match network {
+                    Network::Mainnet => origin,
+                    Network::Testnet10 => origin,
+                    Network::Testnet12 => covpp_origin,
+                };
+                kaspad::Config::new(selected_origin.clone(), network)
+            })
             .collect::<Vec<_>>();
 
         let nginx = nginx::Config::default();
