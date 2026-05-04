@@ -18,14 +18,16 @@ pub struct Config {
 
 impl Config {
     pub fn try_new() -> Result<Self> {
-        let origin = Origin::try_new("https://github.com/aspectron/kaspa-resolver", None)?;
+        let origin = Origin::try_new(
+            "https://github.com/iziodev/kaspa-resolver",
+            Some("tmp/tn12"),
+        )?;
         let resolver = resolver::Config::new(origin)
             .with_stats()
             .with_local_interface(8989);
 
         let origin = Origin::try_new("https://github.com/aspectron/rusty-kaspa", Some("pnn-v1"))?;
-        let tn12_origin =
-            Origin::try_new("https://github.com/kaspanet/rusty-kaspa", Some("tn12"))?;
+        let tn12_origin = Origin::try_new("https://github.com/kaspanet/rusty-kaspa", Some("tn12"))?;
 
         let kaspad = Network::into_iter()
             .map(|network| {
