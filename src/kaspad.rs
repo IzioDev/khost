@@ -81,7 +81,7 @@ impl Config {
         let (grpc, wrpc_borsh, wrpc_json) = match network {
             Network::Mainnet => (16110, 17110, 18110),
             Network::Testnet10 => (16210, 17210, 18210),
-            Network::Testnet12 => (16311, 17210, 18210),
+            Network::Testnet12 => (16312, 17312, 18312),
         };
 
         Self {

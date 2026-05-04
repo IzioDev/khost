@@ -24,17 +24,17 @@ impl Config {
             .with_local_interface(8989);
 
         let origin = Origin::try_new("https://github.com/aspectron/rusty-kaspa", Some("pnn-v1"))?;
-        let covpp_origin =
-            Origin::try_new("https://github.com/kaspanet/rusty-kaspa", Some("covpp"))?;
+        let tn12_origin =
+            Origin::try_new("https://github.com/kaspanet/rusty-kaspa", Some("tn12"))?;
 
         let kaspad = Network::into_iter()
             .map(|network| {
                 let selected_origin = match network {
                     Network::Mainnet => origin.clone(),
                     Network::Testnet10 => origin.clone(),
-                    Network::Testnet12 => covpp_origin.clone(),
+                    Network::Testnet12 => tn12_origin.clone(),
                 };
-                kaspad::Config::new(selected_origin.clone(), network)
+                kaspad::Config::new(selected_origin, network)
             })
             .collect::<Vec<_>>();
 
