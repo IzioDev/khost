@@ -249,7 +249,7 @@ pub fn version(origin: &Origin) -> Option<String> {
         .and_then(|s| {
             s.trim()
                 .split(' ')
-                .last()
+                .next_back()
                 .map(|version| format!("{version}-{hash}"))
         })
 }
