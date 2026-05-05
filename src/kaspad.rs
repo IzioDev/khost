@@ -47,7 +47,7 @@ impl Service for Config {
     }
 
     fn managed(&self) -> bool {
-        self.is_supported_network()
+        self.is_supported_network() || self.is_enabled()
     }
 
     fn proxy_config(&self, _ctx: &Context) -> Option<Vec<ProxyConfig>> {
@@ -452,13 +452,15 @@ pub fn supports_multiple_networks(ctx: &Context, networks: usize) -> bool {
 }
 
 pub fn configure_networks(ctx: &mut Context, networks: Vec<Network>) -> Result<()> {
-    let networks = networks
-        .into_iter()
+    let selected_networks = networks.into_iter().collect::<HashSet<_>>();
+    let supported_networks = selected_networks
+        .iter()
+        .copied()
         .filter(|network| network.is_supported())
         .collect::<HashSet<_>>();
     let limits = [(3, 42), (2, 32)].iter();
     for (nodes, limit) in limits {
-        if networks.len() >= *nodes && ctx.system.ram_as_gb() <= (*limit - 2) {
+        if supported_networks.len() >= *nodes && ctx.system.ram_as_gb() <= (*limit - 2) {
             log::error(format!(
                 "Detected RAM is {}, minimum required for {} networks is {} Gb. Aborting...",
                 as_gb(ctx.system.total_memory as f64, false, false),
@@ -469,8 +471,12 @@ pub fn configure_networks(ctx: &mut Context, networks: Vec<Network>) -> Result<(
         }
     }
 
-    for config in supported_configs_mut(ctx) {
-        config.enabled = networks.contains(&config.network);
+    for config in ctx.config.kaspad.iter_mut() {
+        if config.is_supported_network() {
+            config.enabled = supported_networks.contains(&config.network);
+        } else if config.is_enabled() {
+            config.enabled = selected_networks.contains(&config.network);
+        }
     }
     ctx.config.save()?;
 
@@ -484,7 +490,12 @@ pub fn reconfigure(ctx: &Context, force: bool) -> Result<()> {
 
     log::remark("Updating Kaspa p2p node configuration...")?;
 
-    for config in inactive_supported_configs(ctx) {
+    for config in ctx
+        .config
+        .kaspad
+        .iter()
+        .filter(|config| !config.is_enabled())
+    {
         let service_name = config.service_name();
         if systemd::exists(config) {
             if systemd::is_active(config.service_name())? {
