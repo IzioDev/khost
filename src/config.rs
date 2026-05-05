@@ -91,6 +91,7 @@ impl Config {
 
         // v2 -> v3
         if last_version <= 2 {
+            // push tn12
             if !config
                 .kaspad
                 .iter()
@@ -100,6 +101,18 @@ impl Config {
                     Self::tn12_origin()?,
                     SupportedNetwork::Testnet12.into(),
                 ));
+                update = true;
+            }
+
+            // update rk origin
+            for kaspad_config in config.kaspad.iter_mut().filter(|kaspad_config| {
+                kaspad_config.is_supported_network()
+                    && matches!(
+                        kaspad_config.network(),
+                        Network::Supported(SupportedNetwork::Testnet10 | SupportedNetwork::Mainnet)
+                    )
+            }) {
+                *kaspad_config.origin_mut() = Self::master_origin()?;
                 update = true;
             }
         }
