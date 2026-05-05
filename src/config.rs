@@ -34,8 +34,10 @@ impl Config {
             .copied()
             .map(|network| {
                 let selected_origin = match network {
-                    Mainnet | Testnet10 => master_origin.clone(),
-                    Testnet12 => tn12_origin.clone(),
+                    SupportedNetwork::Mainnet | SupportedNetwork::Testnet10 => {
+                        master_origin.clone()
+                    }
+                    SupportedNetwork::Testnet12 => tn12_origin.clone(),
                 };
                 kaspad::Config::new(selected_origin, network.into())
             })
