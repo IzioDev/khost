@@ -19,6 +19,7 @@ pub struct Config {
 impl Config {
     pub fn try_new() -> Result<Self> {
         let origin = Origin::try_new(
+            // TODO(izio): change before merge
             "https://github.com/iziodev/kaspa-resolver",
             Some("tmp/tn12"),
         )?;
@@ -26,14 +27,14 @@ impl Config {
             .with_stats()
             .with_local_interface(8989);
 
-        let origin = Self::pnn_origin()?;
+        let master_origin = Self::master_origin()?;
         let tn12_origin = Self::tn12_origin()?;
 
         let kaspad = SupportedNetwork::iter()
             .copied()
             .map(|network| {
                 let selected_origin = match network {
-                    Mainnet | Testnet10 => origin.clone(),
+                    Mainnet | Testnet10 => master_origin.clone(),
                     Testnet12 => tn12_origin.clone(),
                 };
                 kaspad::Config::new(selected_origin, network.into())
@@ -55,8 +56,8 @@ impl Config {
         })
     }
 
-    fn pnn_origin() -> Result<Origin> {
-        Origin::try_new("https://github.com/aspectron/rusty-kaspa", Some("pnn-v1"))
+    fn master_origin() -> Result<Origin> {
+        Origin::try_new("https://github.com/kaspanet/rusty-kaspa", Some("master"))
     }
 
     fn tn12_origin() -> Result<Origin> {
