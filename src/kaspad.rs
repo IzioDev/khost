@@ -1,4 +1,7 @@
 use crate::imports::*;
+use crate::network::DeprecatedNetwork::*;
+use crate::network::Network::*;
+use crate::network::SupportedNetwork::*;
 use nginx::prelude::*;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -44,10 +47,14 @@ impl Service for Config {
     }
 
     fn managed(&self) -> bool {
-        true
+        self.is_supported_network() || self.is_enabled()
     }
 
     fn proxy_config(&self, _ctx: &Context) -> Option<Vec<ProxyConfig>> {
+        if self.is_deprecated_network() {
+            return None;
+        }
+
         let mut proxy_configs = Vec::new();
 
         if let Some(iface) = self.wrpc_borsh.as_ref() {
@@ -79,9 +86,10 @@ impl Service for Config {
 impl Config {
     pub fn new(origin: Origin, network: Network) -> Self {
         let (grpc, wrpc_borsh, wrpc_json) = match network {
-            Network::Mainnet => (16110, 17110, 18110),
-            Network::Testnet10 => (16210, 17210, 18210),
-            Network::Testnet12 => (16312, 17312, 18312),
+            Supported(Mainnet) => (16110, 17110, 18110),
+            Supported(Testnet10) => (16210, 17210, 18210),
+            Supported(Testnet12) => (16312, 17312, 18312),
+            Deprecated(Testnet11) => (16311, 17311, 18311),
         };
 
         Self {
@@ -114,6 +122,14 @@ impl Config {
         self.network
     }
 
+    pub fn is_supported_network(&self) -> bool {
+        self.network.is_supported()
+    }
+
+    pub fn is_deprecated_network(&self) -> bool {
+        self.network.is_deprecated()
+    }
+
     pub fn enable(&mut self) {
         self.enabled = true;
     }
@@ -136,16 +152,20 @@ impl From<&Config> for Vec<String> {
         let mut args = Arglist::default();
 
         match config.network {
-            Network::Mainnet => {
+            Supported(Mainnet) => {
                 // args.push("--connect=38.242.201.109");
             }
-            Network::Testnet10 => {
+            Supported(Testnet10) => {
                 args.push("--testnet");
                 args.push("--netsuffix=10");
             }
-            Network::Testnet12 => {
+            Supported(Testnet12) => {
                 args.push("--testnet");
                 args.push("--netsuffix=12");
+            }
+            Deprecated(Testnet11) => {
+                args.push("--testnet");
+                args.push("--netsuffix=11");
             }
         }
 
@@ -191,9 +211,7 @@ impl From<&Config> for Vec<String> {
 }
 
 pub fn unique_origins(ctx: &Context) -> HashSet<Origin> {
-    ctx.config
-        .kaspad
-        .iter()
+    supported_configs(ctx)
         .map(|config| config.origin.clone())
         .collect()
 }
@@ -205,11 +223,49 @@ pub fn active_configs(ctx: &Context) -> impl Iterator<Item = &Config> {
         .filter(|config| config.is_enabled())
 }
 
-pub fn inactive_configs(ctx: &Context) -> impl Iterator<Item = &Config> {
+pub fn supported_configs(ctx: &Context) -> impl Iterator<Item = &Config> {
     ctx.config
         .kaspad
         .iter()
-        .filter(|config| !config.is_enabled())
+        .filter(|config| config.is_supported_network())
+}
+
+pub fn supported_configs_mut(ctx: &mut Context) -> impl Iterator<Item = &mut Config> {
+    ctx.config
+        .kaspad
+        .iter_mut()
+        .filter(|config| config.is_supported_network())
+}
+
+pub fn active_supported_configs(ctx: &Context) -> impl Iterator<Item = &Config> {
+    supported_configs(ctx).filter(|config| config.is_enabled())
+}
+
+pub fn inactive_supported_configs(ctx: &Context) -> impl Iterator<Item = &Config> {
+    supported_configs(ctx).filter(|config| !config.is_enabled())
+}
+
+pub fn legacy_network_service_exists() -> bool {
+    Network::deprecated().any(|network| {
+        let service_name = format!("kaspa-{network}");
+        systemd::service_path(&service_name).exists()
+    })
+}
+
+pub fn has_legacy_network(ctx: &Context) -> bool {
+    ctx.config
+        .kaspad
+        .iter()
+        .any(|config| config.is_deprecated_network())
+        || legacy_network_service_exists()
+}
+
+pub fn warn_legacy_network(ctx: &Context) -> Result<()> {
+    if has_legacy_network(ctx) {
+        log::warning("testnet-11 is deprecated and no longer supported for new kHOST deployments. If kaspa-testnet-11 is installed or running, uninstall it and install/enable testnet-12 instead. testnet-11 compatibility is kept only to load legacy configs and will be removed in a future version.")?;
+    }
+
+    Ok(())
 }
 
 pub fn fetch(ctx: &Context) -> Result<()> {
@@ -245,7 +301,7 @@ pub fn update(ctx: &Context) -> Result<()> {
     fetch(ctx)?;
     build(ctx)?;
     step("Restarting Kaspa p2p nodes...", || {
-        for config in active_configs(ctx) {
+        for config in active_supported_configs(ctx) {
             systemd::restart(config)?;
         }
         Ok(())
@@ -396,10 +452,15 @@ pub fn supports_multiple_networks(ctx: &Context, networks: usize) -> bool {
 }
 
 pub fn configure_networks(ctx: &mut Context, networks: Vec<Network>) -> Result<()> {
-    let networks = networks.into_iter().collect::<HashSet<_>>();
+    let selected_networks = networks.into_iter().collect::<HashSet<_>>();
+    let supported_networks = selected_networks
+        .iter()
+        .copied()
+        .filter(|network| network.is_supported())
+        .collect::<HashSet<_>>();
     let limits = [(3, 42), (2, 32)].iter();
     for (nodes, limit) in limits {
-        if networks.len() >= *nodes && ctx.system.ram_as_gb() <= (*limit - 2) {
+        if supported_networks.len() >= *nodes && ctx.system.ram_as_gb() <= (*limit - 2) {
             log::error(format!(
                 "Detected RAM is {}, minimum required for {} networks is {} Gb. Aborting...",
                 as_gb(ctx.system.total_memory as f64, false, false),
@@ -411,7 +472,11 @@ pub fn configure_networks(ctx: &mut Context, networks: Vec<Network>) -> Result<(
     }
 
     for config in ctx.config.kaspad.iter_mut() {
-        config.enabled = networks.contains(&config.network);
+        if config.is_supported_network() {
+            config.enabled = supported_networks.contains(&config.network);
+        } else if config.is_enabled() {
+            config.enabled = selected_networks.contains(&config.network);
+        }
     }
     ctx.config.save()?;
 
@@ -425,7 +490,12 @@ pub fn reconfigure(ctx: &Context, force: bool) -> Result<()> {
 
     log::remark("Updating Kaspa p2p node configuration...")?;
 
-    for config in inactive_configs(ctx) {
+    for config in ctx
+        .config
+        .kaspad
+        .iter()
+        .filter(|config| !config.is_enabled())
+    {
         let service_name = config.service_name();
         if systemd::exists(config) {
             if systemd::is_active(config.service_name())? {
@@ -442,7 +512,7 @@ pub fn reconfigure(ctx: &Context, force: bool) -> Result<()> {
         }
     }
 
-    for config in active_configs(ctx) {
+    for config in active_supported_configs(ctx) {
         let service_name = config.service_name();
         step(format!("Configuring '{}'", service_name), || {
             if force || !systemd::exists(config) {
@@ -456,7 +526,7 @@ pub fn reconfigure(ctx: &Context, force: bool) -> Result<()> {
     if reconfigure_systemd {
         step("Reloading systemd daemon...", systemd::daemon_reload)?;
 
-        for config in active_configs(ctx) {
+        for config in active_supported_configs(ctx) {
             let service_name = config.service_name();
             step(format!("Brining up '{}'", service_name), || {
                 systemd::enable(config)?;
@@ -467,20 +537,6 @@ pub fn reconfigure(ctx: &Context, force: bool) -> Result<()> {
 
     log::success("Kaspa p2p node configuration updated")?;
 
-    Ok(())
-}
-
-pub fn stop_all(ctx: &Context) -> Result<()> {
-    for config in active_configs(ctx) {
-        systemd::stop(config)?;
-    }
-    Ok(())
-}
-
-pub fn start_all(ctx: &Context) -> Result<()> {
-    for config in active_configs(ctx) {
-        systemd::start(config)?;
-    }
     Ok(())
 }
 
@@ -577,7 +633,7 @@ pub fn find_config_by_service_detail<'a>(
         .find(|config| config.service_name() == detail.name)
 }
 
-pub fn select_networks(ctx: &mut Context) -> Result<()> {
+pub fn select_supported_networks(ctx: &mut Context) -> Result<()> {
     if ctx.system.ram_as_gb() < 24 {
         log::warning(format!(
             "Detected RAM is {}, minimum required for multiple networks is 32 Gb.",
@@ -585,13 +641,12 @@ pub fn select_networks(ctx: &mut Context) -> Result<()> {
         ))?;
 
         let mut selector = cliclack::select("Select Kaspa p2p node network to enable");
-        let details = ctx
-            .config
-            .kaspad
-            .iter()
+        let details = supported_configs(ctx)
             .map(Service::service_detail)
             .collect::<Vec<_>>();
-        let selected = active_configs(ctx).next().map(Service::service_detail);
+        let selected = active_supported_configs(ctx)
+            .next()
+            .map(Service::service_detail);
         if let Some(selected) = selected {
             selector = selector.initial_value(selected);
         }
@@ -599,15 +654,12 @@ pub fn select_networks(ctx: &mut Context) -> Result<()> {
             selector = selector.item(detail.clone(), detail, "");
         }
         let selected = selector.interact()?;
-        ctx.config.kaspad.iter_mut().for_each(Config::disable);
+        supported_configs_mut(ctx).for_each(Config::disable);
         find_config_by_service_detail(ctx, &selected)
             .unwrap()
             .enable();
     } else {
-        let details = ctx
-            .config
-            .kaspad
-            .iter()
+        let details = supported_configs(ctx)
             .map(Service::service_detail)
             .collect::<Vec<_>>();
         let enabled = details
@@ -635,7 +687,7 @@ pub fn select_networks(ctx: &mut Context) -> Result<()> {
             }
         }
 
-        ctx.config.kaspad.iter_mut().for_each(Config::disable);
+        supported_configs_mut(ctx).for_each(Config::disable);
         for detail in selected.iter() {
             find_config_by_service_detail(ctx, detail).unwrap().enable();
         }
