@@ -1,6 +1,6 @@
 use crate::imports::*;
 
-const CONFIG_VERSION: u64 = 2;
+const CONFIG_VERSION: u64 = 3;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
@@ -26,17 +26,17 @@ impl Config {
             .with_stats()
             .with_local_interface(8989);
 
-        let origin = Origin::try_new("https://github.com/aspectron/rusty-kaspa", Some("pnn-v1"))?;
-        let tn12_origin = Origin::try_new("https://github.com/kaspanet/rusty-kaspa", Some("tn12"))?;
+        let origin = Self::pnn_origin()?;
+        let tn12_origin = Self::tn12_origin()?;
 
-        let kaspad = Network::into_iter()
+        let kaspad = SupportedNetwork::iter()
+            .copied()
             .map(|network| {
                 let selected_origin = match network {
-                    Network::Mainnet => origin.clone(),
-                    Network::Testnet10 => origin.clone(),
-                    Network::Testnet12 => tn12_origin.clone(),
+                    Mainnet | Testnet10 => origin.clone(),
+                    Testnet12 => tn12_origin.clone(),
                 };
-                kaspad::Config::new(selected_origin, network)
+                kaspad::Config::new(selected_origin, network.into())
             })
             .collect::<Vec<_>>();
 
@@ -54,6 +54,14 @@ impl Config {
             resolver,
         })
     }
+
+    fn pnn_origin() -> Result<Origin> {
+        Origin::try_new("https://github.com/aspectron/rusty-kaspa", Some("pnn-v1"))
+    }
+
+    fn tn12_origin() -> Result<Origin> {
+        Origin::try_new("https://github.com/kaspanet/rusty-kaspa", Some("tn12"))
+    }
 }
 
 impl Config {
@@ -63,18 +71,44 @@ impl Config {
             return Err(Error::custom("Config file not found"));
         }
         let mut config: Config = serde_json::from_str(&fs::read_to_string(config_path)?)?;
+        let last_version = config.version;
 
         let mut update = false;
-        // Migrate old config
-        if config.version == 1 {
-            config.kaspad.iter_mut().for_each(|config| {
-                if let Some(branch) = config.origin_mut().branch_mut() {
-                    if branch == "omega" {
-                        *branch = "pnn-v1".to_string();
-                        update = true;
+        // v1 -> v2
+        if last_version <= 1 {
+            config.kaspad.iter_mut().for_each(|kaspad_config| {
+                if kaspad_config.network().is_supported() {
+                    if let Some(branch) = kaspad_config.origin_mut().branch_mut() {
+                        if branch == "omega" {
+                            *branch = "pnn-v1".to_string();
+                            update = true;
+                        }
                     }
                 }
             });
+        }
+
+        // v2 -> v3
+        if last_version <= 2 {
+            if !config
+                .kaspad
+                .iter()
+                .any(|config| config.network() == SupportedNetwork::Testnet12.into())
+            {
+                config.kaspad.push(kaspad::Config::new(
+                    Self::tn12_origin()?,
+                    SupportedNetwork::Testnet12.into(),
+                ));
+                update = true;
+            }
+        }
+
+        // keep until v3 is current, gate it to <= 3 on v4
+        update |= config.remove_unused_legacy_network(DeprecatedNetwork::Testnet11);
+
+        if config.version < CONFIG_VERSION {
+            config.version = CONFIG_VERSION;
+            update = true;
         }
 
         if update {
@@ -82,7 +116,6 @@ impl Config {
                 "Updated kHOST config to version {}",
                 CONFIG_VERSION
             ))?;
-            config.version = CONFIG_VERSION;
             config.save()?;
         }
 
@@ -93,6 +126,18 @@ impl Config {
         let config_path = data_folder().join("config.json");
         fs::write(config_path, serde_json::to_string_pretty(&self)?)?;
         Ok(())
+    }
+
+    /// considered unused if no systemd service and no active in cfg
+    fn remove_unused_legacy_network(&mut self, network: DeprecatedNetwork) -> bool {
+        let network = Network::from(network);
+        let kaspad_len = self.kaspad.len();
+        self.kaspad.retain(|kaspad_config| {
+            kaspad_config.network() != network
+                || kaspad_config.is_enabled()
+                || systemd::is_active(kaspad_config.service_name()).unwrap_or(true)
+        });
+        self.kaspad.len() != kaspad_len
     }
 
     pub fn reset() {

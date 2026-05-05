@@ -62,6 +62,8 @@ fn main() {
 
     sudo::init(&mut ctx);
 
+    kaspad::warn_legacy_network(&ctx).ok();
+
     let first_run = !ctx.config.bootstrap;
 
     let status = status::detect(&ctx);

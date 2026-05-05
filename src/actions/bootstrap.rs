@@ -24,7 +24,7 @@ impl Action for Bootstrap {
                         resolver::init_resolver_config(ctx).ok();
                     }
 
-                    kaspad::select_networks(ctx)?;
+                    kaspad::select_supported_networks(ctx)?;
 
                     base::install(ctx, false)?;
                     ctx.config.bootstrap = true;
