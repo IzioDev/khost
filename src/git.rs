@@ -200,10 +200,8 @@ where
     };
 
     let origin = match preset {
-        Preset::PNNv1 => {
-            Origin::try_new("https://github.com/aspectron/rusty-kaspa", Some("pnn-v1"))?
-        }
-        Preset::Tn12 => Origin::try_new("https://github.com/kaspanet/rusty-kaspa", Some("tn12"))?,
+        Preset::PNNv1 => Config::pnnv1_origin()?,
+        Preset::Tn12 => Config::pnnv1tn12_origin()?,
         // Preset::Delta => {
         //     Origin::try_new("https://github.com/aspectron/rusty-kaspa", Some("delta"))?
         // }

@@ -23,16 +23,14 @@ impl Config {
             .with_stats()
             .with_local_interface(8989);
 
-        let master_origin = Self::master_origin()?;
-        let tn12_origin = Self::tn12_origin()?;
+        let pnnv1_origin = Self::pnnv1_origin()?;
+        let tn12_origin = Self::pnnv1tn12_origin()?;
 
         let kaspad = SupportedNetwork::iter()
             .copied()
             .map(|network| {
                 let selected_origin = match network {
-                    SupportedNetwork::Mainnet | SupportedNetwork::Testnet10 => {
-                        master_origin.clone()
-                    }
+                    SupportedNetwork::Mainnet | SupportedNetwork::Testnet10 => pnnv1_origin.clone(),
                     SupportedNetwork::Testnet12 => tn12_origin.clone(),
                 };
                 kaspad::Config::new(selected_origin, network.into())
@@ -54,12 +52,15 @@ impl Config {
         })
     }
 
-    fn master_origin() -> Result<Origin> {
-        Origin::try_new("https://github.com/kaspanet/rusty-kaspa", Some("master"))
+    pub fn pnnv1_origin() -> Result<Origin> {
+        Origin::try_new("https://github.com/aspectron/rusty-kaspa", Some("pnn-v1"))
     }
 
-    fn tn12_origin() -> Result<Origin> {
-        Origin::try_new("https://github.com/kaspanet/rusty-kaspa", Some("tn12"))
+    pub fn pnnv1tn12_origin() -> Result<Origin> {
+        Origin::try_new(
+            "https://github.com/aspectron/rusty-kaspa",
+            Some("pnn-v1-tn12"),
+        )
     }
 }
 
@@ -96,7 +97,7 @@ impl Config {
                 .any(|config| config.network() == SupportedNetwork::Testnet12.into())
             {
                 config.kaspad.push(kaspad::Config::new(
-                    Self::tn12_origin()?,
+                    Self::pnnv1tn12_origin()?,
                     SupportedNetwork::Testnet12.into(),
                 ));
                 update = true;
@@ -110,7 +111,7 @@ impl Config {
                         Network::Supported(SupportedNetwork::Testnet10 | SupportedNetwork::Mainnet)
                     )
             }) {
-                *kaspad_config.origin_mut() = Self::master_origin()?;
+                *kaspad_config.origin_mut() = Self::pnnv1_origin()?;
                 update = true;
             }
         }
