@@ -88,8 +88,8 @@ impl Config {
         let (grpc, wrpc_borsh, wrpc_json) = match network {
             Supported(Mainnet) => (16110, 17110, 18110),
             Supported(Testnet10) => (16210, 17210, 18210),
-            Supported(Testnet12) => (16312, 17312, 18312),
-            Deprecated(Testnet11) => (16311, 17311, 18311),
+            Supported(Testnet12) => (16410, 17410, 18410),
+            Deprecated(Testnet11) => (16310, 17310, 18310),
         };
 
         Self {
