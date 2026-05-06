@@ -34,6 +34,6 @@ Please note that the user needs to have root (sudo) privileges to run khost.
 
 IMPORTANT: This tool creates it's own configuration for the kaspad node, as such, any previous configurations should be disabled and removed. If kaspad was running before under the same username, the `~/.rusty-kaspa` data folders containing databases will be re-used.
 
-## Default Origins
+## Kaspad Default Origins
 
 They are set to `aspectron/*` origins, manually updated from `upstream`. This is a design choice that allows high velocity update coordination and controlled versioning, in practice, it should follow upstream release cycle.
