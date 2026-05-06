@@ -5,7 +5,7 @@
 
 Kaspa p2p node deployment automation tool for Linux.
 
-kHOST was created to automate deployment of Kaspa nodes intended for use as a part of the Kaspa public RPC network as well as private network high-availability clusters.  kHOST deploys Rusty-Kaspa nodes from sources, configures them to run as a `systemd` service as well as configures NGINX to act as a reverse proxy for the RPC.  This tool exists to simplify and automate Kaspa node deployment as well as to standardize related system configuration.
+kHOST was created to automate deployment of Kaspa nodes intended for use as a part of the Kaspa public RPC network as well as private network high-availability clusters. kHOST deploys Rusty-Kaspa nodes from sources, configures them to run as a `systemd` service as well as configures NGINX to act as a reverse proxy for the RPC. This tool exists to simplify and automate Kaspa node deployment as well as to standardize related system configuration.
 
 ## Deploying
 
@@ -33,3 +33,7 @@ If you already have an existing user and rust installed, you can simply run `car
 Please note that the user needs to have root (sudo) privileges to run khost.
 
 IMPORTANT: This tool creates it's own configuration for the kaspad node, as such, any previous configurations should be disabled and removed. If kaspad was running before under the same username, the `~/.rusty-kaspa` data folders containing databases will be re-used.
+
+## Kaspad Default Origins
+
+They are set to `aspectron/*` origins, manually updated from `upstream`. This is a design choice that allows high velocity update coordination and controlled versioning, in practice, it should follow upstream release cycle.

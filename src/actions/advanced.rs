@@ -84,7 +84,12 @@ impl Action for Advanced {
                 match selector.interact() {
                     Ok(BranchChange::Kaspad) => {
                         let origin = git::create_origin("rusty-kaspa")?;
-                        for config in ctx.config.kaspad.iter_mut() {
+                        for config in ctx
+                            .config
+                            .kaspad
+                            .iter_mut()
+                            .filter(|config| config.network().is_supported())
+                        {
                             config.set_origin(origin.clone());
                         }
                         ctx.config.save()?;
