@@ -18,7 +18,10 @@ pub struct Config {
 
 impl Config {
     pub fn try_new() -> Result<Self> {
-        let origin = Origin::try_new("https://github.com/aspectron/kaspa-resolver", None)?;
+        let origin = Origin::try_new(
+            "https://github.com/iziodev/kaspa-resolver",
+            Some("chore/tn-12"),
+        )?;
         let resolver = resolver::Config::new(origin)
             .with_stats()
             .with_local_interface(8989);
