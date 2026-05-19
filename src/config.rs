@@ -119,7 +119,7 @@ impl Config {
                         *kaspad_config.origin_mut() = Self::pnnv1_toccata_origin()?;
                         update = true;
 
-                        log::warning("warning: a manual tn10 node DB reset will be needed, either\n\t- remove manually, default location: `~/.rusty-kaspa/kaspa-testnet-10`\t- or, uninstall tn10 and re-install");
+                        let _ = log::warning("warning: a manual tn10 node DB reset will be needed, either\n\t- remove manually, default location: `~/.rusty-kaspa/kaspa-testnet-10`\t- or, uninstall tn10 and re-install");
                     }
                     _ => (),
                 }
