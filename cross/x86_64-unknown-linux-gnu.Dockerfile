@@ -1,8 +1,8 @@
-ARG CROSS_BASE_IMAGE
-FROM $CROSS_BASE_IMAGE
+FROM rust:1-bookworm
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
+        build-essential \
         pkg-config \
         libssl-dev \
         ca-certificates && \
