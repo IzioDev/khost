@@ -278,11 +278,15 @@ impl Display for NginxConfig {
     }
 }
 
-pub fn version() -> Option<String> {
-    cmd!("nginx", "-v")
-        .read()
-        .ok()
-        .map(|s| s.trim().to_string())
+pub fn version() -> Option<Version> {
+    let raw = cmd!("nginx", "-v").read().ok()?;
+
+    let version = raw
+        .trim()
+        .strip_prefix("nginx version: nginx/")
+        .unwrap_or(raw.trim());
+
+    Version::parse(version).ok()
 }
 
 pub fn install(_ctx: &Context) -> Result<()> {
@@ -331,4 +335,20 @@ pub fn reconfigure(ctx: &Context) -> Result<()> {
         store(NginxConfig::new(server_kind, proxy_configs))?;
         reload()
     })
+}
+
+pub fn warn_cve_2026_42945() {
+    let Some(installed_version) = version() else {
+        let _ = log::warning("warning: could not determine nginx version");
+        return;
+    };
+
+    let fixed_stable = Version::parse("1.30.1").unwrap();
+    let fixed_mainline = Version::parse("1.31.0").unwrap();
+
+    let is_fixed = installed_version >= fixed_mainline || installed_version >= fixed_stable;
+
+    if !is_fixed {
+        log::warning(format!("warning: nginx {} may be vulnerable to CVE-2026-42945; upgrade to >= 1.30.1 or >= 1.31.0", installed_version)).expect("should log warning");
+    }
 }

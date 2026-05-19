@@ -2,6 +2,7 @@ pub use cfg_if::cfg_if;
 pub use cliclack::log;
 pub use is_root::is_root;
 pub use pad::{Alignment, PadStr};
+pub use semver::Version;
 pub use serde::{Deserialize, Serialize};
 pub use sha2::{Digest, Sha256};
 pub use std::collections::{HashMap, HashSet, VecDeque};
