@@ -24,7 +24,7 @@ impl Config {
             .with_local_interface(8989);
 
         let pnnv1_origin = Self::pnnv1_origin()?;
-        let tn12_origin = Self::pnnv1tn12_origin()?;
+        let tn12_origin = Self::pnnv1_toccata_origin()?;
 
         let kaspad = SupportedNetwork::iter()
             .copied()
@@ -56,10 +56,10 @@ impl Config {
         Origin::try_new("https://github.com/aspectron/rusty-kaspa", Some("pnn-v1"))
     }
 
-    pub fn pnnv1tn12_origin() -> Result<Origin> {
+    pub fn pnnv1_toccata_origin() -> Result<Origin> {
         Origin::try_new(
             "https://github.com/aspectron/rusty-kaspa",
-            Some("pnn-v1-tn12"),
+            Some("pnn-v1-toccata"),
         )
     }
 }
@@ -97,22 +97,30 @@ impl Config {
                 .any(|config| config.network() == SupportedNetwork::Testnet12.into())
             {
                 config.kaspad.push(kaspad::Config::new(
-                    Self::pnnv1tn12_origin()?,
+                    Self::pnnv1_toccata_origin()?,
                     SupportedNetwork::Testnet12.into(),
                 ));
                 update = true;
             }
 
             // update rk origin
-            for kaspad_config in config.kaspad.iter_mut().filter(|kaspad_config| {
-                kaspad_config.is_supported_network()
-                    && matches!(
-                        kaspad_config.network(),
-                        Network::Supported(SupportedNetwork::Testnet10 | SupportedNetwork::Mainnet)
-                    )
-            }) {
-                *kaspad_config.origin_mut() = Self::pnnv1_origin()?;
-                update = true;
+            for kaspad_config in config
+                .kaspad
+                .iter_mut()
+                .filter(|kaspad_config| kaspad_config.is_supported_network())
+            {
+                match kaspad_config.network() {
+                    Network::Supported(SupportedNetwork::Mainnet) => {
+                        *kaspad_config.origin_mut() = Self::pnnv1_origin()?;
+                        update = true;
+                    }
+                    // set to toccata in the meantime of master release
+                    Network::Supported(SupportedNetwork::Testnet10) => {
+                        *kaspad_config.origin_mut() = Self::pnnv1_toccata_origin()?;
+                        update = true;
+                    }
+                    _ => (),
+                }
             }
         }
 
