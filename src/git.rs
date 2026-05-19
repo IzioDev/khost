@@ -180,14 +180,18 @@ where
     enum Preset {
         PNNv1,
         // Delta,
-        Tn12,
+        PNNv1Toccata,
         Custom,
     }
 
     let preset = if name == "rusty-kaspa" {
         cliclack::select(format!("Select git origin for '{name}':"))
             .item(Preset::PNNv1, "pnn-v1 (aspectron/pnn-v1)", "")
-            .item(Preset::Tn12, "tn12 (kaspanet/tn12)", "")
+            .item(
+                Preset::PNNv1Toccata,
+                "pnn-v1-toccata (aspectron/pnn-v1-toccata)",
+                "",
+            )
             // .item(
             //     Preset::Delta,
             //     "Delta",
@@ -201,7 +205,7 @@ where
 
     let origin = match preset {
         Preset::PNNv1 => Config::pnnv1_origin()?,
-        Preset::Tn12 => Config::pnnv1tn12_origin()?,
+        Preset::PNNv1Toccata => Config::pnnv1_toccata_origin()?,
         // Preset::Delta => {
         //     Origin::try_new("https://github.com/aspectron/rusty-kaspa", Some("delta"))?
         // }

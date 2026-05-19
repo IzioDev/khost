@@ -62,7 +62,8 @@ fn main() {
 
     sudo::init(&mut ctx);
 
-    kaspad::warn_legacy_network(&ctx).ok();
+    kaspad::warn_legacy_network(&ctx);
+    nginx::warn_cve_2026_42945();
 
     let first_run = !ctx.config.bootstrap;
 
