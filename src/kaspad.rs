@@ -260,12 +260,10 @@ pub fn has_legacy_network(ctx: &Context) -> bool {
         || legacy_network_service_exists()
 }
 
-pub fn warn_legacy_network(ctx: &Context) -> Result<()> {
+pub fn warn_legacy_network(ctx: &Context) -> () {
     if has_legacy_network(ctx) {
-        log::warning("testnet-11 is deprecated and no longer supported for new kHOST deployments. If kaspa-testnet-11 is installed or running, uninstall it and install/enable testnet-12 instead. testnet-11 compatibility is kept only to load legacy configs and will be removed in a future version.")?;
+        let _ = log::warning("testnet-11 is deprecated and no longer supported for new kHOST deployments. If kaspa-testnet-11 is installed or running, uninstall it and install/enable testnet-12 instead. testnet-11 compatibility is kept only to load legacy configs and will be removed in a future version.");
     }
-
-    Ok(())
 }
 
 pub fn fetch(ctx: &Context) -> Result<()> {
