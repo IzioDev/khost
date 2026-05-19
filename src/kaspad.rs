@@ -339,7 +339,7 @@ pub fn uninstall(ctx: &Context) -> Result<()> {
             let data_folder = if let Some(data_folder) = &config.data_folder {
                 data_folder.clone()
             } else {
-                home_folder().join(".kaspad")
+                home_folder().join(".rusty-kaspa")
             };
 
             let network_folder = data_folder.join(config.network.to_string());
